@@ -1,17 +1,24 @@
 import os
 
 class Bam():
-    def __init__(self, bam_path):
+    def __init__(self, bam_path, hs_metrics_path="", hdf5_path=""):
         self.path = bam_path
         self.filename = os.path.basename(self.path)
         self.dir = os.path.dirname(self.path)
+
         self.bai_path = self.path.replace("bam", "bai")
         self.bai_filename = self.filename.replace("bam", "bai")
         self.validate_bam_bai()
-        self.bam_volume = "/bam_dir"
+        self.volume = "/bam_dir"
+        self.gatk_dirname = "GATK_gCNV"
+        self.gatk_dir = os.path.join(self.dir, self.gatk_dirname)
+        
+        self.hdf5_path = hdf5_path
+        self.hdf5_filename = os.path.basename(self.hdf5_path)
 
-        self.hdf5_path = None
-        self.hdf5_filename = None
+        self.hs_metrics_path = hs_metrics_path
+        self.hs_metrics_filename = os.path.basename(self.hs_metrics_path)
+
 
     def validate_bam_bai(self):
         bam_size = os.path.getsize(self.path)
@@ -26,5 +33,22 @@ class Bam():
     
 
     def set_hdf5_path_and_filename(self, hdf5_path):
-        self.hdf5_path = hdf5_path
+        if os.path.isfile(hdf5_path):
+            self.hdf5_path = hdf5_path
+        else:
+            raise ValueError(
+                f"Hdf5 path does not exist: {hdf5_path}"
+            )
         self.hdf5_filename = os.path.basename(hdf5_path)
+
+    
+    def set_hs_metrics(self, hs_metrics_path):
+        if os.path.isfile(hs_metrics_path):
+            self.hs_metrics_path = hs_metrics_path
+        else:
+            raise ValueError(
+                f"Hs_metrics path does not exist: {hs_metrics_path}"
+            )
+        self.hs_metrics_filename = os.path.basename(hs_metrics_path)
+
+    

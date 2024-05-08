@@ -48,7 +48,7 @@ for run in time_ordered_runs:
     if run.panel == "SUDD_147":
         run_ids.append(run.run_id)
         logger.info(f"{run.run_id} will be analysed")
-    if len(run_ids) == 16:
+    if len(run_ids) == 15:
         break
 
 logger.info(f"{len(run_ids)} runs will be downloaded")
@@ -61,23 +61,22 @@ for run in run_ids:
 
     for sample_147 in Run_obj.samples_147:
 
-        downloaded_files = sample_147.get_bam_bai_from_compendi(ref_conf)
+        Bam = sample_147.get_bam_bai_from_compendi(ref_conf)
 
         # check if files have been downloaded correctly
-        if downloaded_files:
+        if sample_147.bam:
             analysis_samples.append(sample_147)
-            bam_path, bai_path = downloaded_files
         else:
             continue
         # Picard
-        Picard_Obj.run_collectHsMetrics(bam_path)
-        info_line, value_line = Picard_Obj.get_picard_metrics()
+        Picard_Obj.run_collectHsMetrics(Bam, Bed_obj)
+        info_line, value_line = Picard_Obj.get_picard_metrics(Bam)
         if not Picard_Metrics_Df.has_df_header():
             Picard_Metrics_Df.add_metrics_header(info_line)
         Picard_Metrics_Df.add_metrics_line(value_line)
 
         # Mosdepth
-        Mosdepth_Obj.run_mosdepth(bam_path,force=False)
+        Mosdepth_Obj.run_mosdepth(Bam.path,force=False)
         exon_coverage, sample_mean_coverage = Mosdepth_Obj.parse_mosdepth_regions_bed(Run_obj.run_id)
         Mosdepth_Metrics_Df.add_normalized_mean_coverage_dict(exon_coverage, sample_mean_coverage)
 
@@ -94,11 +93,16 @@ for run in run_ids:
 # Mosdepth_Metrics_Df.apply_umap(umap_plot_path, normalized=True)
 
 # Run GATK gCNV
+Picard_Obj.run_bed_to_interval_list(Bed_obj)
 Gatk_obj = Gatk_gCNV(docker_conf, ref_conf, Bed_obj)
+Gatk_obj.run_preprocess_intervals(Bed_obj)
+Gatk_obj.run_index_feature_file(Bed_obj)
+Gatk_obj.run_annotate_intervals(Bed_obj)
+
 for sample in analysis_samples:
-    Gatk_obj.run_preprocess_intervals()
-    Gatk_obj.run_collect_read_counts(sample.bam_path)
-    Gatk_obj.run_annotate_intervals()
+    Bam = sample.bam
+    Gatk_obj.run_collect_read_counts(Bam, Bed_obj)
+Gatk_obj.run_filter_intervals(Bed_obj)
 # Mosdepth_Metrics_Df.get_heatmap(heatmap_path)
 # print(Picard_Metrics_Df.metrics_df)
 # --------------FINISH ITERATING OVER RUNS---------
